@@ -232,7 +232,7 @@ if (stock < quantity) {
 
         // 4. Tạo mã đơn hàng
         const orderId =
-            "BC3D-" +
+            "QNS-" +
             Date.now() +
             "-" +
             Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -241,7 +241,7 @@ if (stock < quantity) {
 
         // 5. Tạo nội dung Telegram
         const message = [
-            "🛒 <b>ĐƠN HÀNG MỚI - BAN CÔNG 3D</b>",
+            "🛒 <b>ĐƠN HÀNG MỚI - Quyên Nguyễn Shop</b>",
             "",
             `🆔 Mã đơn: <code>${orderId}</code>`,
             `🕒 Thời gian: ${createdAt.toLocaleString("vi-VN", {
@@ -249,7 +249,7 @@ if (stock < quantity) {
             })}`,
             "",
             "👤 <b>THÔNG TIN KHÁCH HÀNG</b>",
-            `Họ tên: ${escapeTelegramHTML(name)}`,
+            `Họ và tên: ${escapeTelegramHTML(name)}`,
             `SĐT: ${escapeTelegramHTML(phone)}`,
             `Địa chỉ: ${escapeTelegramHTML(address)}`,
             "",
