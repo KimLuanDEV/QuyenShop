@@ -2232,6 +2232,7 @@ select:focus {
 ========================================= */
 
 let uploadInProgress = false;
+let imageProcessingCount = 0;
 
 function updateUploadProgress(percent, status) {
     const value = Math.max(
@@ -2326,12 +2327,21 @@ function apiUpload(url, method, product) {
                 return;
             }
 
-            if (xhr.status < 200 || xhr.status >= 300) {
-                reject(new Error(
-                    data.error || "Không thể lưu sản phẩm."
-                ));
-                return;
-            }
+if (xhr.status < 200 || xhr.status >= 300) {
+    console.error("Lỗi đăng sản phẩm:", {
+        status: xhr.status,
+        response: data,
+        payloadBytes: new Blob([
+            JSON.stringify(product)
+        ]).size
+    });
+
+    reject(new Error(
+        (data.error || "Không thể lưu sản phẩm.") +
+        "\nMã lỗi HTTP: " + xhr.status
+    ));
+    return;
+}
 
             updateUploadProgress(
                 100,
@@ -2775,39 +2785,28 @@ function optimizeImage(file) {
    CHỌN TỐI ĐA 5 ẢNH
 ========================================================= */
 
+
 $("image").onchange = async (event) => {
-
     const files = Array.from(event.target.files);
-
-    // Cho phép chọn thêm ảnh sau đó
     event.target.value = "";
 
-    if (files.length === 0) {
+    if (!files.length) return;
+
+    if (imageProcessingCount > 0) {
+        await modalAlert(
+            "Hệ thống đang xử lý ảnh. Vui lòng chờ hoàn tất.",
+            "warning"
+        );
         return;
     }
-
-
-    /* ================================
-       KIỂM TRA SỐ LƯỢNG
-    ================================= */
 
     if (imagesData.length + files.length > 5) {
-
-await modalAlert(
-    "Mỗi sản phẩm chỉ được tối đa 5 ảnh.\n" +
-    "Hiện tại đã có " +
-    imagesData.length +
-    " ảnh.",
-    "warning"
-);
-
+        await modalAlert(
+            "Mỗi sản phẩm chỉ được tối đa 5 ảnh.",
+            "warning"
+        );
         return;
     }
-
-
-    /* ================================
-       KIỂM TRA ĐỊNH DẠNG
-    ================================= */
 
     const allowedTypes = [
         "image/jpeg",
@@ -2815,69 +2814,69 @@ await modalAlert(
         "image/webp"
     ];
 
-    // Cho phép ảnh gốc tối đa 10 MB
-    const MAX_ORIGINAL_SIZE =
-        10 * 1024 * 1024;
-
+    const maxSize = 10 * 1024 * 1024;
 
     for (const file of files) {
-
         if (!allowedTypes.includes(file.type)) {
-
-await modalAlert(
-    'Ảnh "' +
-    file.name +
-    '" không đúng định dạng.\n' +
-    "Chỉ hỗ trợ JPG, PNG và WebP.",
-    "error"
-);
-
+            await modalAlert(
+                `Ảnh "${file.name}" không đúng định dạng.`,
+                "error"
+            );
             return;
         }
 
-
-        if (file.size > MAX_ORIGINAL_SIZE) {
-
-await modalAlert(
-    'Ảnh "' +
-    file.name +
-    '" vượt quá 10 MB.\n' +
-    "Vui lòng chọn ảnh có dung lượng nhỏ hơn.",
-    "warning"
-);
-
+        if (file.size > maxSize) {
+            await modalAlert(
+                `Ảnh "${file.name}" vượt quá 10 MB.`,
+                "warning"
+            );
             return;
         }
     }
 
-
-    /* ================================
-       TỐI ƯU ẢNH
-    ================================= */
+    imageProcessingCount++;
+    $("submitBtn").disabled = true;
+    $("submitBtn").textContent = "Đang xử lý ảnh...";
 
     try {
-
         const newImages = [];
 
         for (const file of files) {
+            const optimized = await optimizeImage(file);
 
-            const optimized =
-                await optimizeImage(file);
+            if (
+                typeof optimized !== "string" ||
+                !optimized.startsWith("data:image/") ||
+                optimized.length < 100
+            ) {
+                throw new Error(
+                    `Không thể tối ưu ảnh "${file.name}".`
+                );
+            }
 
             newImages.push(optimized);
         }
 
-
         imagesData.push(...newImages);
-
         renderImagePreviews();
 
-
     } catch (error) {
+        console.error("Lỗi xử lý ảnh:", error);
 
-        console.error(error);
+        await modalAlert(
+            error.message || "Không thể xử lý hình ảnh.",
+            "error"
+        );
 
-await modalAlert("Không thể xử lý hình ảnh.", "error");
+    } finally {
+        imageProcessingCount--;
+
+        if (!uploadInProgress) {
+            $("submitBtn").disabled = false;
+            $("submitBtn").textContent = editing
+                ? "Cập nhật sản phẩm"
+                : "Đăng sản phẩm";
+        }
     }
 };
 
@@ -2920,6 +2919,22 @@ $("productForm").onsubmit = async (event) => {
 
     // Chặn nhấn đăng nhiều lần
     if (uploadInProgress) return;
+
+    if (imageProcessingCount > 0) {
+    await modalAlert(
+        "Hình ảnh chưa xử lý xong. Vui lòng chờ.",
+        "warning"
+    );
+    return;
+}
+
+if (imagesData.length > 5) {
+    await modalAlert(
+        "Sản phẩm không được vượt quá 5 ảnh.",
+        "warning"
+    );
+    return;
+}
 
     if (!(await requireAdminPassword())) {
         return;
