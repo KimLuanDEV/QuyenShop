@@ -1363,6 +1363,498 @@ textarea {
 
 
 
+/* ==============================================
+   QUYÊN NGUYỄN SHOP - LUXURY ADMIN THEME
+   Đồng bộ giao diện với trang cửa hàng
+============================================== */
+
+:root {
+    --brand: #b79661;
+    --brand-dark: #94713e;
+    --surface: #fffefa;
+    --canvas: #faf7f2;
+    --line: #e9dfd2;
+    --ink: #302820;
+    --muted: #827568;
+    --shadow: 0 8px 30px rgba(82, 59, 34, .07);
+}
+
+body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* HEADER */
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255, 254, 250, .96);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 4px 24px rgba(70, 50, 25, .04);
+    color: var(--ink);
+    min-height: 76px;
+}
+
+header strong {
+    color: var(--ink);
+    font-size: 19px;
+    font-weight: 850;
+    letter-spacing: -.6px;
+}
+
+header a {
+    background: #f3eadc;
+    color: var(--brand-dark);
+    border: 1px solid #e9dcc8;
+    border-radius: 30px;
+    padding: 11px 18px;
+    text-decoration: none;
+    transition: .2s;
+}
+
+header a:hover {
+    background: var(--ink);
+    color: white;
+}
+
+/* MAIN */
+
+main {
+    max-width: 1360px;
+    margin: 38px auto;
+}
+
+main > h1 {
+    font-size: clamp(26px, 3vw, 36px);
+    color: var(--ink);
+    font-weight: 850;
+    letter-spacing: -1px;
+    margin-bottom: 26px;
+}
+
+/* THỐNG KÊ */
+
+.admin-stats {
+    gap: 18px;
+    margin-bottom: 28px;
+}
+
+.admin-stat {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(145deg, #fffefa, #faf4e9);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    transition: transform .2s, box-shadow .2s;
+}
+
+.admin-stat:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(82, 59, 34, .10);
+}
+
+.admin-stat::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(#d8bf92, #94713e);
+}
+
+.admin-stat-label {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.admin-stat-value,
+.admin-stat:nth-child(1) .admin-stat-value,
+.admin-stat:nth-child(3) .admin-stat-value {
+    color: var(--ink);
+    font-size: clamp(25px, 3vw, 34px);
+    margin-top: 12px;
+}
+
+/* KHUNG QUẢN LÝ */
+
+.layout {
+    display: block;
+}
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+}
+
+.panel h2 {
+    color: var(--ink);
+    border-bottom-color: var(--line);
+}
+
+.product-list-heading {
+    margin-bottom: 25px;
+}
+
+.product-list-heading h2 {
+    font-size: 22px;
+    letter-spacing: -.5px;
+}
+
+/* BUTTON */
+
+.btn,
+#openProductModal,
+.product-modal-actions #submitBtn {
+    background: var(--ink);
+    color: white;
+    border-radius: 12px;
+    border: 1px solid var(--ink);
+    font-weight: 750;
+    transition: background .2s, transform .2s, box-shadow .2s;
+}
+
+.btn:hover,
+#openProductModal:hover,
+.product-modal-actions #submitBtn:hover {
+    background: var(--brand-dark);
+    border-color: var(--brand-dark);
+    box-shadow: 0 6px 18px rgba(148, 113, 62, .16);
+}
+
+.btn.secondary {
+    background: #f3eadc;
+    border-color: #eadcc8;
+    color: var(--ink);
+}
+
+.btn.secondary:hover {
+    background: #e9dcc7;
+    border-color: #d9c7ab;
+}
+
+.btn.danger {
+    background: #fff0ed;
+    color: #b94a42;
+    border-color: #f3d7d2;
+}
+
+.btn.danger:hover {
+    background: #fbe1dc;
+    border-color: #e9bcb4;
+}
+
+/* INPUT */
+
+label {
+    color: var(--ink);
+}
+
+input,
+textarea,
+select {
+    background: #fffefa;
+    color: var(--ink);
+    border: 1px solid #e3d8ca;
+    border-radius: 12px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    background: white;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px rgba(183, 150, 97, .12);
+    outline: none;
+}
+
+.toolbar {
+    border-bottom-color: var(--line);
+}
+
+.toolbar input {
+    background: #faf7f2;
+    border-radius: 30px;
+    padding: 14px 18px;
+}
+
+.count {
+    background: #f3eadc;
+    color: var(--brand-dark);
+    border: 1px solid #eadcc8;
+}
+
+/* DANH SÁCH SẢN PHẨM */
+
+.item {
+    border-bottom: 1px solid var(--line);
+    padding: 21px 0;
+    transition: background .2s;
+}
+
+.item:hover {
+    background: #fdfaf5;
+}
+
+.item img {
+    background: #f7f1e8;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    padding: 8px;
+}
+
+.item h3 {
+    color: var(--ink);
+    font-weight: 800;
+}
+
+.item p {
+    color: var(--muted);
+}
+
+.item .price,
+.price {
+    color: var(--brand-dark);
+    font-weight: 850;
+}
+
+.item .actions .btn {
+    border-radius: 10px;
+}
+
+/* FORM THÊM SẢN PHẨM */
+
+.product-modal {
+    background: rgba(40, 31, 23, .65);
+}
+
+.product-modal-box {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+}
+
+.product-modal-header {
+    background: #faf5ed;
+    border-bottom: 1px solid var(--line);
+}
+
+.product-modal-header h2 {
+    color: var(--ink);
+}
+
+.product-modal-header p {
+    color: var(--muted);
+}
+
+.product-modal-close {
+    background: #f0e5d5;
+    color: var(--ink);
+}
+
+.product-modal-body {
+    background: var(--surface);
+}
+
+.product-modal-actions {
+    background: var(--surface);
+    border-top-color: var(--line);
+}
+
+#image {
+    background: #faf6ef;
+    border: 1.5px dashed #cdb48e;
+}
+
+#image::file-selector-button {
+    background: #eee0ca;
+    color: #70512b;
+}
+
+.note {
+    background: #faf5eb;
+    color: var(--muted);
+    border: 1px solid var(--line);
+}
+
+.image-preview-item {
+    background: #fffefa;
+    border-color: var(--line);
+}
+
+/* MODAL THÔNG BÁO */
+
+.admin-modal {
+    background: rgba(40, 31, 23, .55);
+}
+
+.admin-modal-box {
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.admin-modal-box h3 {
+    color: var(--ink);
+}
+
+.admin-modal-box p {
+    color: var(--muted);
+}
+
+.admin-modal-ok {
+    background: var(--ink);
+    color: white;
+}
+
+.admin-modal-cancel {
+    background: #f0e5d5;
+    color: var(--ink);
+}
+
+/* PHÂN TRANG */
+
+.product-pagination {
+    border-top-color: var(--line);
+}
+
+.product-page-btn {
+    background: var(--surface);
+    border-color: var(--line);
+    color: var(--ink);
+}
+
+.product-page-btn:hover:not(:disabled) {
+    background: #f3eadc;
+    border-color: var(--brand);
+    color: var(--brand-dark);
+}
+
+.product-page-btn.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: white;
+}
+
+/* TRẠNG THÁI ĐANG TẢI */
+
+.product-loading {
+    background: #faf6ef;
+    border-color: var(--line);
+}
+
+.product-loading-top strong {
+    color: var(--ink);
+}
+
+.product-loading-top p {
+    color: var(--muted);
+}
+
+.product-loading-spinner {
+    border-color: #e9dcc8;
+    border-top-color: var(--brand-dark);
+}
+
+.product-loading-track,
+.upload-progress-track {
+    background: #e9dcc8;
+}
+
+.upload-progress-bar {
+    background: linear-gradient(90deg, #94713e, #d6b982);
+}
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+    header {
+        min-height: 66px;
+        padding: 14px 16px;
+        gap: 10px;
+    }
+
+    header strong {
+        font-size: 14px;
+        letter-spacing: -.3px;
+    }
+
+    header a {
+        padding: 9px 12px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    main {
+        margin: 24px auto;
+        padding: 0 14px;
+    }
+
+    main > h1 {
+        font-size: 26px;
+        margin-bottom: 22px;
+    }
+
+    .admin-stats {
+        gap: 9px;
+    }
+
+    .admin-stat {
+        padding: 16px 10px 16px 13px;
+        border-radius: 14px;
+    }
+
+    .admin-stat-label {
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    .admin-stat-value,
+    .admin-stat:nth-child(1) .admin-stat-value,
+    .admin-stat:nth-child(3) .admin-stat-value {
+        font-size: 24px;
+    }
+
+    .panel {
+        padding: 18px 15px;
+        border-radius: 18px;
+    }
+
+    .product-list-heading h2 {
+        font-size: 19px;
+    }
+
+    #openProductModal {
+        width: 100%;
+        padding: 14px;
+    }
+
+    .item img {
+        width: 78px;
+        height: 78px;
+    }
+
+    .product-modal-box {
+        border-radius: 18px;
+    }
+
+    .product-modal-header {
+        padding: 18px;
+    }
+
+    .product-modal-body {
+        padding: 18px;
+    }
+}
+
 
 
     </style>
@@ -1374,10 +1866,26 @@ textarea {
          9. HEADER ADMIN
     ========================================== -->
 
-    <header>
-        <strong>Quyên Nguyễn SHOP · ADMIN</strong>
-        <a href="index.html">← Cửa hàng</a>
-    </header>
+
+<header>
+    <strong>
+        QUYÊN NGUYỄN
+        <span style="color:#b79661">SHOP</span>
+        <small style="
+            display:block;
+            font-size:10px;
+            font-weight:650;
+            letter-spacing:2px;
+            color:#94713e;
+            margin-top:5px;
+        ">
+            ADMIN DASHBOARD
+        </small>
+    </strong>
+
+    <a href="index.html">← Về cửa hàng</a>
+</header>
+
 
     <!-- =========================================
          10. NỘI DUNG CHÍNH
