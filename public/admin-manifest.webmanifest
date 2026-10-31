@@ -1,10 +1,10 @@
 
 {
-  "id": "/admin-products.html",
+  "id": "/admin-qns.html",
   "name": "Quyên Nguyễn Shop - Admin",
   "short_name": "QN Admin",
   "description": "Quản lý sản phẩm Quyên Nguyễn Shop",
-  "start_url": "/admin-products.html",
+  "start_url": "/admin-qns.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",
