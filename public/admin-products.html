@@ -2806,7 +2806,10 @@ function renderImagePreviews() {
                 document.createTextNode(` ${progress}% - Đang xử lý`)
             );
         } else if (status === "error") {
-            statusLine.textContent = "✕ Xử lý thất bại";
+            statusLine.textContent = "✕ " + (
+    pendingImages.find(e => e.preview === src)?.errorMessage
+    || "Xử lý thất bại"
+);
         } else {
             statusLine.textContent = "✓ Hoàn tất";
         }
@@ -2863,118 +2866,80 @@ function renderImagePreviews() {
    ĐỌC + TỰ ĐỘNG TỐI ƯU ẢNH
 ========================================================= */
 
-function optimizeImage(file, onProgress = () => {}) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
 
-        onProgress(5);
+async function optimizeImage(file, onProgress = () => {}) {
+    if (!file || !file.type.startsWith("image/")) {
+        throw new Error("File không phải hình ảnh");
+    }
 
-        reader.onprogress = event => {
-            if (event.lengthComputable) {
-                onProgress(Math.round(
-                    5 + event.loaded / event.total * 35
-                ));
+    onProgress(10);
+
+    const bitmap = await createImageBitmap(file);
+
+    try {
+        const MAX_BYTES = 1024 * 1024;
+        let maxDimension = 1400;
+
+        for (let attempt = 0; attempt < 12; attempt++) {
+            const scale = Math.min(
+                1,
+                maxDimension / Math.max(bitmap.width, bitmap.height)
+            );
+
+            const width = Math.max(1, Math.round(bitmap.width * scale));
+            const height = Math.max(1, Math.round(bitmap.height * scale));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+
+            if (!ctx) {
+                throw new Error("Không thể tạo Canvas");
             }
-        };
 
-        reader.onerror = () => {
-            reject(new Error("Không thể đọc ảnh"));
-        };
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(bitmap, 0, 0, width, height);
 
-        reader.onload = () => {
-            onProgress(45);
+            const quality = Math.max(0.45, 0.85 - attempt * 0.05);
 
-            const img = new Image();
+            const blob = await new Promise(resolve => {
+                canvas.toBlob(resolve, "image/webp", quality);
+            });
 
-            img.onerror = () => {
-                reject(new Error("Ảnh không hợp lệ"));
-            };
+            if (!blob) {
+                throw new Error("Không thể nén ảnh");
+            }
 
-            img.onload = () => {
-                try {
-                    const MAX_BYTES = 1024 * 1024;
-                    let maxDimension = 1400;
-                    let quality = 0.8;
-                    let optimized = "";
+            onProgress(Math.min(95, 20 + (attempt + 1) * 6));
 
-                    for (let attempt = 0; attempt < 12; attempt++) {
-                        const ratio = Math.min(
-                            1,
-                            maxDimension / Math.max(
-                                img.width, img.height
-                            )
-                        );
+            if (blob.size <= MAX_BYTES) {
+                const result = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(
+                        new Error("Không thể đọc ảnh đã nén")
+                    );
+                    reader.readAsDataURL(blob);
+                });
 
-                        const width = Math.max(
-                            1, Math.round(img.width * ratio)
-                        );
-                        const height = Math.max(
-                            1, Math.round(img.height * ratio)
-                        );
+                onProgress(100);
+                return result;
+            }
 
-                        const canvas = document.createElement("canvas");
-                        canvas.width = width;
-                        canvas.height = height;
+            maxDimension = Math.max(
+                400,
+                Math.round(maxDimension * 0.8)
+            );
+        }
 
-                        const ctx = canvas.getContext("2d");
-
-                        if (!ctx) {
-                            throw new Error("Không thể xử lý ảnh");
-                        }
-
-                        ctx.fillStyle = "#ffffff";
-                        ctx.fillRect(0, 0, width, height);
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        optimized = canvas.toDataURL(
-                            "image/webp",
-                            quality
-                        );
-
-                        if (!optimized.startsWith("data:image/webp;base64,")) {
-                            throw new Error("Trình duyệt không hỗ trợ WebP");
-                        }
-
-                        const base64 = optimized.split(",")[1];
-                        const bytes = Math.floor(
-                            base64.length * 3 / 4
-                        );
-
-                        onProgress(Math.min(
-                            95,
-                            50 + (attempt + 1) * 4
-                        ));
-
-                        if (bytes <= MAX_BYTES) {
-                            onProgress(100);
-                            resolve(optimized);
-                            return;
-                        }
-
-                        quality = Math.max(0.5, quality - 0.08);
-                        maxDimension = Math.max(
-                            600,
-                            Math.round(maxDimension * 0.85)
-                        );
-                    }
-
-                    reject(new Error(
-                        "Ảnh vẫn quá lớn sau khi tối ưu"
-                    ));
-
-                } catch (error) {
-                    reject(error);
-                }
-            };
-
-            img.src = reader.result;
-        };
-
-        reader.readAsDataURL(file);
-    });
+        throw new Error("Không thể giảm ảnh xuống dưới 1 MB");
+    } finally {
+        bitmap.close();
+    }
 }
-
-
 
 /* =========================================================
    CHỌN TỐI ĐA 5 ẢNH
@@ -3062,8 +3027,9 @@ $("image").onchange = async (event) => {
                     error
                 );
 
-                entry.status = "error";
-                entry.progress = 0;
+entry.status = "error";
+entry.progress = 0;
+entry.errorMessage = error.message || "Lỗi không xác định";
             }
 
             renderImagePreviews();
