@@ -1,0 +1,26 @@
+
+{
+  "id": "/admin-products.html",
+  "name": "Quyên Nguyễn Shop - Admin",
+  "short_name": "QN Admin",
+  "description": "Quản lý sản phẩm Quyên Nguyễn Shop",
+  "start_url": "/admin-products.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#16834a",
+  "icons": [
+    {
+      "src": "/admin-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
