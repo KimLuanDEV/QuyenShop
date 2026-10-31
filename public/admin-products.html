@@ -2869,12 +2869,11 @@ function optimizeImage(file, onProgress = () => {}) {
 
         onProgress(5);
 
-        reader.onprogress = (event) => {
+        reader.onprogress = event => {
             if (event.lengthComputable) {
-                const percent = Math.round(
-                    5 + (event.loaded / event.total) * 40
-                );
-                onProgress(percent);
+                onProgress(Math.round(
+                    5 + event.loaded / event.total * 35
+                ));
             }
         };
 
@@ -2883,64 +2882,85 @@ function optimizeImage(file, onProgress = () => {}) {
         };
 
         reader.onload = () => {
-            onProgress(50);
+            onProgress(45);
 
             const img = new Image();
 
             img.onerror = () => {
-                reject(new Error("Không thể giải mã ảnh"));
+                reject(new Error("Ảnh không hợp lệ"));
             };
 
             img.onload = () => {
                 try {
-                    onProgress(70);
+                    const MAX_BYTES = 1024 * 1024;
+                    let maxDimension = 1400;
+                    let quality = 0.8;
+                    let optimized = "";
 
-                    const MAX_WIDTH = 1600;
-                    const MAX_HEIGHT = 1600;
+                    for (let attempt = 0; attempt < 12; attempt++) {
+                        const ratio = Math.min(
+                            1,
+                            maxDimension / Math.max(
+                                img.width, img.height
+                            )
+                        );
 
-                    const ratio = Math.min(
-                        MAX_WIDTH / img.width,
-                        MAX_HEIGHT / img.height,
-                        1
-                    );
+                        const width = Math.max(
+                            1, Math.round(img.width * ratio)
+                        );
+                        const height = Math.max(
+                            1, Math.round(img.height * ratio)
+                        );
 
-                    const width = Math.max(
-                        1, Math.round(img.width * ratio)
-                    );
+                        const canvas = document.createElement("canvas");
+                        canvas.width = width;
+                        canvas.height = height;
 
-                    const height = Math.max(
-                        1, Math.round(img.height * ratio)
-                    );
+                        const ctx = canvas.getContext("2d");
 
-                    const canvas = document.createElement("canvas");
-                    canvas.width = width;
-                    canvas.height = height;
+                        if (!ctx) {
+                            throw new Error("Không thể xử lý ảnh");
+                        }
 
-                    const ctx = canvas.getContext("2d");
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
 
-                    if (!ctx) {
-                        throw new Error("Không thể tạo canvas");
+                        optimized = canvas.toDataURL(
+                            "image/webp",
+                            quality
+                        );
+
+                        if (!optimized.startsWith("data:image/webp;base64,")) {
+                            throw new Error("Trình duyệt không hỗ trợ WebP");
+                        }
+
+                        const base64 = optimized.split(",")[1];
+                        const bytes = Math.floor(
+                            base64.length * 3 / 4
+                        );
+
+                        onProgress(Math.min(
+                            95,
+                            50 + (attempt + 1) * 4
+                        ));
+
+                        if (bytes <= MAX_BYTES) {
+                            onProgress(100);
+                            resolve(optimized);
+                            return;
+                        }
+
+                        quality = Math.max(0.5, quality - 0.08);
+                        maxDimension = Math.max(
+                            600,
+                            Math.round(maxDimension * 0.85)
+                        );
                     }
 
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, width, height);
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    onProgress(85);
-
-                    const optimized = canvas.toDataURL(
-                        "image/webp", 0.82
-                    );
-
-                    if (
-                        !optimized.startsWith("data:image/") ||
-                        optimized.length < 100
-                    ) {
-                        throw new Error("Ảnh tối ưu không hợp lệ");
-                    }
-
-                    onProgress(100);
-                    resolve(optimized);
+                    reject(new Error(
+                        "Ảnh vẫn quá lớn sau khi tối ưu"
+                    ));
 
                 } catch (error) {
                     reject(error);
@@ -3141,6 +3161,30 @@ if (imagesData.length > 5) {
         images: imagesData
     };
 
+
+    
+const payloadBytes = new Blob([
+    JSON.stringify(product)
+]).size;
+
+const maxPayloadBytes = 12 * 1024 * 1024;
+
+console.log(
+    "Dung lượng dữ liệu đăng sản phẩm:",
+    (payloadBytes / 1024 / 1024).toFixed(2),
+    "MB"
+);
+
+if (payloadBytes > maxPayloadBytes) {
+    await modalAlert(
+        "Tổng dung lượng ảnh quá lớn. " +
+        "Vui lòng giảm dung lượng ảnh trước khi đăng.",
+        "warning"
+    );
+    return;
+}
+
+
     const isEditing = Boolean(editing);
 
     const url = isEditing
@@ -3223,7 +3267,7 @@ function editProduct(product) {
     // Cập nhật tiêu đề và nút lưu
     $("formTitle").textContent = "Chỉnh sửa sản phẩm";
     $("submitBtn").textContent = "Lưu thay đổi";
-    
+
 updateImageSubmitState();
 openProductModal();
 }
