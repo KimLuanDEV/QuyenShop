@@ -3349,6 +3349,93 @@ footer {
 
 
 
+/* NÚT THÊM SHOP VÀO MÀN HÌNH CHÍNH */
+.qn-install-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 14px 12px;
+    border: 1px solid #c8a977;
+    border-radius: 30px;
+    background: #fff9ef;
+    color: #94713e;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.qn-install-btn:hover {
+    background: #f1e5d2;
+}
+
+.qn-install-btn svg {
+    flex-shrink: 0;
+}
+
+.qn-install-btn[hidden] {
+    display: none !important;
+}
+
+/* HƯỚNG DẪN CÀI ĐẶT */
+.qn-install-guide {
+    position: fixed;
+    inset: 0;
+    z-index: 300000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px;
+    background: rgba(32,25,18,.72);
+    backdrop-filter: blur(6px);
+}
+
+.qn-install-guide[hidden] {
+    display: none !important;
+}
+
+.qn-install-guide-box {
+    width: min(400px,100%);
+    padding: 28px 24px;
+    border-radius: 22px;
+    background: #fffefa;
+    border: 1px solid #dfc9a5;
+    box-shadow: 0 20px 60px #0003;
+    text-align: center;
+}
+
+.qn-install-guide-box h3 {
+    margin: 0 0 14px;
+    color: #302820;
+    font-size: 21px;
+}
+
+.qn-install-guide-box p {
+    color: #766858;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-line;
+}
+
+.qn-install-guide-close {
+    width: 100%;
+    padding: 14px;
+    margin-top: 14px;
+    border: 0;
+    border-radius: 30px;
+    background: #302820;
+    color: #fffaf1;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+
+
+
+
 </style>
  </head>
  <body>
@@ -3872,6 +3959,24 @@ footer {
                 id="qnWelcomeStart">
             BẮT ĐẦU KHÁM PHÁ CỬA HÀNG →
         </button>
+
+        
+<button class="qn-install-btn"
+        id="qnInstallBtn"
+        type="button">
+    <svg width="20" height="20" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor"
+         stroke-width="1.8"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         aria-hidden="true">
+        <path d="M12 3v12"/>
+        <path d="m7 10 5 5 5-5"/>
+        <path d="M5 17v3h14v-3"/>
+    </svg>
+    <span>Thêm cửa hàng vào màn hình chính</span>
+</button>
+
 
         <div class="qn-welcome-footer">
             Cảm ơn bạn đã tin tưởng và
@@ -5268,6 +5373,114 @@ document.addEventListener("keydown", event => {
         setTimeout(showWelcome, 900);
     });
 })();
+
+
+
+
+/* ===== THÊM QUYÊN NGUYỄN SHOP VÀO MÀN HÌNH CHÍNH ===== */
+(function () {
+    const installBtn = document.getElementById("qnInstallBtn");
+    if (!installBtn) return;
+
+    let installPrompt = null;
+
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+
+    if (isStandalone) {
+        installBtn.hidden = true;
+        return;
+    }
+
+    // Chrome/Edge Android có thể cung cấp hộp thoại cài đặt.
+    window.addEventListener("beforeinstallprompt", function (event) {
+        event.preventDefault();
+        installPrompt = event;
+    });
+
+    const guide = document.createElement("div");
+    guide.className = "qn-install-guide";
+    guide.hidden = true;
+    guide.innerHTML = `
+        <div class="qn-install-guide-box"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="qnInstallGuideTitle">
+            <h3 id="qnInstallGuideTitle">
+                Thêm Quyên Nguyễn Shop
+            </h3>
+            <p id="qnInstallGuideText"></p>
+            <button class="qn-install-guide-close"
+                    type="button">
+                Đã hiểu
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(guide);
+
+    const guideText = guide.querySelector("#qnInstallGuideText");
+
+    function showGuide(message) {
+        guideText.textContent = message;
+        guide.hidden = false;
+    }
+
+    function closeGuide() {
+        guide.hidden = true;
+    }
+
+    guide.querySelector(".qn-install-guide-close")
+        .addEventListener("click", closeGuide);
+
+    guide.addEventListener("click", function (event) {
+        if (event.target === guide) closeGuide();
+    });
+
+    installBtn.addEventListener("click", async function () {
+        if (installPrompt) {
+            const promptEvent = installPrompt;
+            installPrompt = null;
+
+            try {
+                await promptEvent.prompt();
+                await promptEvent.userChoice;
+            } catch (error) {
+                console.warn("Không mở được hộp thoại cài đặt:", error);
+            }
+            return;
+        }
+
+        if (isIOS) {
+            showGuide(
+                "Trên iPhone hoặc iPad:\n\n" +
+                "1. Mở cửa hàng bằng Safari.\n" +
+                "2. Nhấn biểu tượng Chia sẻ.\n" +
+                "3. Chọn Thêm vào Màn hình chính.\n" +
+                "4. Nhấn Thêm để hoàn tất.\n\n" +
+                "Sau đó, bạn có thể mở shop từ màn hình chính."
+            );
+        } else {
+            showGuide(
+                "Để thêm Quyên Nguyễn Shop vào màn hình chính:\n\n" +
+                "1. Mở website bằng Chrome hoặc trình duyệt hỗ trợ.\n" +
+                "2. Nhấn menu ⋮ của trình duyệt.\n" +
+                "3. Chọn Thêm vào màn hình chính hoặc Cài đặt ứng dụng.\n" +
+                "4. Xác nhận để hoàn tất."
+            );
+        }
+    });
+
+    window.addEventListener("appinstalled", function () {
+        installPrompt = null;
+        installBtn.hidden = true;
+        closeGuide();
+    });
+})();
+
+
 
 
 
