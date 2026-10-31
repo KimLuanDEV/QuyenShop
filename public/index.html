@@ -3084,6 +3084,110 @@ footer {
 
 
 
+/* THANH TIẾN TRÌNH TẢI SẢN PHẨM */
+
+.grid .product-loading {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 500px;
+    margin: 25px auto 45px;
+    padding: 30px;
+    background: #fffefa;
+    border: 1px solid #e9dfd2;
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(65, 45, 25, 0.05);
+}
+
+.product-loading-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 24px;
+}
+
+.product-loading-label {
+    color: #a7834b;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+.product-loading-title {
+    color: #302820;
+    font-size: 19px;
+    font-weight: 650;
+    margin: 0;
+}
+
+.product-loading-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #f7f0e5;
+    color: #a7834b;
+    font-size: 24px;
+}
+
+.product-loading-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: #827568;
+    font-size: 12px;
+}
+
+.product-loading-percent {
+    color: #94713e;
+    font-weight: 750;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+}
+
+.product-loading-track {
+    height: 7px;
+    background: #eee5d8;
+    border-radius: 30px;
+    overflow: hidden;
+}
+
+.product-loading-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        #d3bc96,
+        #a7834b
+    );
+    border-radius: inherit;
+    transition: width 0.3s ease;
+}
+
+.product-loading-note {
+    margin: 15px 0 0;
+    color: #a19587;
+    font-size: 11px;
+}
+
+@media (max-width: 600px) {
+    .grid .product-loading {
+        margin: 12px auto 25px;
+        padding: 24px 20px;
+    }
+
+    .product-loading-title {
+        font-size: 17px;
+    }
+}
+
+
+
+
 </style>
  </head>
  <body>
@@ -3757,23 +3861,134 @@ function updateCount() {
    4. TẢI SẢN PHẨM TỪ API RENDER
 ========================================================= */
 
+
 async function loadProducts() {
     const grid = $("grid");
 
-    grid.textContent = "Đang tải sản phẩm...";
+    // Giao diện thanh tiến trình
+    grid.innerHTML = `
+        <div class="product-loading" role="status">
+            <div class="product-loading-top">
+                <div>
+                    <div class="product-loading-label">
+                        QUYÊN NGUYỄN SHOP
+                    </div>
+                    <h3 class="product-loading-title">
+                        Đang chuẩn bị sản phẩm
+                    </h3>
+                </div>
+                <div class="product-loading-icon">✦</div>
+            </div>
+
+            <div class="product-loading-status">
+                <span id="loadingStatus">
+                    Đang kết nối cửa hàng...
+                </span>
+                <span class="product-loading-percent"
+                      id="loadingPercent">0%</span>
+            </div>
+
+            <div class="product-loading-track"
+                 role="progressbar"
+                 aria-label="Tiến trình tải sản phẩm"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-valuenow="0"
+                 id="loadingProgress">
+                <div class="product-loading-bar"
+                     id="loadingBar"></div>
+            </div>
+
+            <p class="product-loading-note">
+                Một chút chờ đợi cho trải nghiệm mua sắm tốt hơn.
+            </p>
+        </div>
+    `;
+
+    let progress = 0;
+    let targetProgress = 10;
+
+    const setProgress = (value, status) => {
+        targetProgress = Math.max(
+            targetProgress,
+            Math.min(100, value)
+        );
+
+        const statusEl = $("loadingStatus");
+        if (status && statusEl) {
+            statusEl.textContent = status;
+        }
+    };
+
+    // Chạy mượt đến mục tiêu hiện tại
+    const timer = setInterval(() => {
+        if (progress >= targetProgress) return;
+
+        progress = Math.min(
+            targetProgress,
+            progress + Math.max(
+                1,
+                Math.ceil((targetProgress - progress) / 8)
+            )
+        );
+
+        const bar = $("loadingBar");
+        const percent = $("loadingPercent");
+        const progressEl = $("loadingProgress");
+
+        if (bar) bar.style.width = progress + "%";
+        if (percent) percent.textContent = progress + "%";
+        if (progressEl) {
+            progressEl.setAttribute(
+                "aria-valuenow",
+                progress
+            );
+        }
+    }, 60);
 
     try {
-        const response = await fetch(PRODUCTS_API);
+        // Trong khi chờ phản hồi API,
+        // tiến trình chỉ chạy ước lượng đến 85%.
+        setProgress(
+            15,
+            "Đang kết nối đến cửa hàng..."
+        );
+
+        const waitingTimer = setInterval(() => {
+            if (targetProgress < 85) {
+                targetProgress += 1;
+            }
+        }, 350);
+
+        let response;
+
+        try {
+            response = await fetch(PRODUCTS_API);
+        } finally {
+            clearInterval(waitingTimer);
+        }
 
         if (!response.ok) {
             throw new Error("Không tải được sản phẩm");
         }
 
+        setProgress(
+            90,
+            "Đang tiếp nhận dữ liệu sản phẩm..."
+        );
+
         const data = await response.json();
 
         if (!Array.isArray(data)) {
-            throw new Error("Dữ liệu sản phẩm không hợp lệ");
+            throw new Error(
+                "Dữ liệu sản phẩm không hợp lệ"
+            );
         }
+
+        setProgress(
+            95,
+            "Đang sắp xếp danh sách sản phẩm..."
+        );
 
         products = data;
 
@@ -3782,12 +3997,25 @@ async function loadProducts() {
         renderCart();
         updateCount();
 
+        // Hoàn tất sau khi sản phẩm đã được render
+        setProgress(100);
+
     } catch (error) {
         console.error("Lỗi tải sản phẩm:", error);
 
-        grid.textContent = error.message;
+        grid.innerHTML = "";
+
+        const message = document.createElement("p");
+        message.className = "empty";
+        message.textContent = error.message;
+
+        grid.appendChild(message);
+
+    } finally {
+        clearInterval(timer);
     }
 }
+
 
 
 /* =========================================================
