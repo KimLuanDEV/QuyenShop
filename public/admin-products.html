@@ -1857,6 +1857,80 @@ select:focus {
 
 
 
+
+/* TIẾN TRÌNH XỬ LÝ TỪNG ẢNH */
+
+.image-preview-item {
+    overflow: hidden;
+}
+
+.image-preview-item.is-processing img {
+    opacity: .65;
+}
+
+.image-progress-track {
+    height: 6px;
+    margin: 7px 0 4px;
+    background: #eee5d8;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.image-progress-fill {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #94713e, #d6b982);
+    border-radius: inherit;
+    transition: width .2s ease;
+}
+
+.image-preview-item.is-error .image-progress-fill {
+    background: #dc2626;
+}
+
+.image-status {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    color: #94713e;
+    min-height: 20px;
+}
+
+.image-preview-item.is-ready .image-status {
+    color: #15803d;
+}
+
+.image-preview-item.is-error .image-status {
+    color: #dc2626;
+}
+
+.image-spinner {
+    width: 13px;
+    height: 13px;
+    border: 2px solid #e8d8bd;
+    border-top-color: #94713e;
+    border-radius: 50%;
+    animation: imageSpin .7s linear infinite;
+}
+
+@keyframes imageSpin {
+    to { transform: rotate(360deg); }
+}
+
+#submitBtn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+
+
+
+
     </style>
 </head>
 
@@ -2233,6 +2307,8 @@ select:focus {
 
 let uploadInProgress = false;
 let imageProcessingCount = 0;
+let pendingImages = [];
+
 
 function updateUploadProgress(percent, status) {
     const value = Math.max(
@@ -2395,7 +2471,7 @@ function openProductModal() {
 
 
 function closeProductModal() {
-if (uploadInProgress) return;
+if (uploadInProgress || imageProcessingCount > 0) return;
 
     $("productModal").hidden = true;
     document.body.style.overflow = "";
@@ -2638,6 +2714,13 @@ async function load() {
 
 
 function reset() {
+    if (imageProcessingCount > 0 || uploadInProgress) return;
+
+pendingImages.forEach(item => {
+    URL.revokeObjectURL(item.preview);
+});
+pendingImages = [];
+
     editing = null;
     imagesData = [];
 
@@ -2649,6 +2732,9 @@ function reset() {
 
     $("formTitle").textContent = "Thêm sản phẩm mới";
     $("submitBtn").textContent = "Đăng sản phẩm";
+
+
+   updateImageSubmitState(); 
 }
 
 
@@ -2660,117 +2746,205 @@ $("resetBtn").onclick = reset;
 ========================================= */
 
 // Hiển thị danh sách ảnh đã chọn
-function renderImagePreviews() {
 
+function updateImageSubmitState() {
+    const processing = imageProcessingCount > 0;
+    const hasErrors = pendingImages.some(
+        item => item.status === "error"
+    );
+
+    const button = $("submitBtn");
+
+    button.disabled = uploadInProgress || processing || hasErrors;
+    $("image").disabled = uploadInProgress || processing;
+    $("resetBtn").disabled = uploadInProgress || processing;
+
+    if (!uploadInProgress) {
+        button.textContent = processing
+            ? `Đang xử lý ${pendingImages.filter(
+                item => item.status === "ready"
+            ).length}/${pendingImages.length} ảnh...`
+            : hasErrors
+                ? "Có ảnh bị lỗi - Hãy xóa ảnh lỗi"
+                : editing
+                    ? "Lưu thay đổi"
+                    : "Đăng sản phẩm";
+    }
+}
+
+function renderImagePreviews() {
     const container = $("imagePreviews");
     container.replaceChildren();
 
-    imagesData.forEach((src, index) => {
-
+    function createCard(src, labelText, status, progress, onRemove) {
         const item = document.createElement("div");
-        item.className = "image-preview-item";
+        item.className = "image-preview-item is-" + status;
 
         const img = document.createElement("img");
         img.src = src;
-        img.alt = "Ảnh sản phẩm " + (index + 1);
+        img.alt = labelText;
 
         const label = document.createElement("small");
-        label.textContent = index === 0
-            ? "Ảnh chính"
-            : "Ảnh phụ " + index;
+        label.textContent = labelText;
 
-        // Nút xóa từng ảnh
-        const removeButton = document.createElement("button");
-        removeButton.type = "button";
-        removeButton.textContent = "×";
-        removeButton.title = "Xóa ảnh";
+        const track = document.createElement("div");
+        track.className = "image-progress-track";
 
-        removeButton.onclick = () => {
+        const fill = document.createElement("div");
+        fill.className = "image-progress-fill";
+        fill.style.width = progress + "%";
+        track.appendChild(fill);
 
-            imagesData.splice(index, 1);
+        const statusLine = document.createElement("div");
+        statusLine.className = "image-status";
 
-            // Ảnh đầu tiên còn lại trở thành ảnh chính
-            renderImagePreviews();
-        };
+        if (status === "processing") {
+            const spinner = document.createElement("span");
+            spinner.className = "image-spinner";
+            statusLine.appendChild(spinner);
+            statusLine.appendChild(
+                document.createTextNode(` ${progress}% - Đang xử lý`)
+            );
+        } else if (status === "error") {
+            statusLine.textContent = "✕ Xử lý thất bại";
+        } else {
+            statusLine.textContent = "✓ Hoàn tất";
+        }
 
-        item.append(img, label, removeButton);
+        item.append(img, label, track, statusLine);
+
+        if (status !== "processing") {
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.textContent = "×";
+            removeButton.title = "Xóa ảnh";
+
+            removeButton.onclick = onRemove;
+            item.appendChild(removeButton);
+        }
+
         container.appendChild(item);
+    }
+
+    imagesData.forEach((src, index) => {
+        createCard(
+            src,
+            index === 0 ? "Ảnh chính" : "Ảnh phụ " + index,
+            "ready",
+            100,
+            () => {
+                if (imageProcessingCount > 0) return;
+                imagesData.splice(index, 1);
+                renderImagePreviews();
+                updateImageSubmitState();
+            }
+        );
+    });
+
+    pendingImages.forEach((entry, index) => {
+        createCard(
+            entry.preview,
+            entry.file.name,
+            entry.status,
+            entry.progress,
+            () => {
+                if (imageProcessingCount > 0) return;
+                pendingImages.splice(index, 1);
+                renderImagePreviews();
+                updateImageSubmitState();
+            }
+        );
     });
 }
+
 
 
 /* =========================================================
    ĐỌC + TỰ ĐỘNG TỐI ƯU ẢNH
 ========================================================= */
 
-function optimizeImage(file) {
-
+function optimizeImage(file, onProgress = () => {}) {
     return new Promise((resolve, reject) => {
-
         const reader = new FileReader();
+
+        onProgress(5);
+
+        reader.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const percent = Math.round(
+                    5 + (event.loaded / event.total) * 40
+                );
+                onProgress(percent);
+            }
+        };
 
         reader.onerror = () => {
             reject(new Error("Không thể đọc ảnh"));
         };
 
         reader.onload = () => {
+            onProgress(50);
 
             const img = new Image();
 
             img.onerror = () => {
-                reject(new Error("Không thể xử lý ảnh"));
+                reject(new Error("Không thể giải mã ảnh"));
             };
 
             img.onload = () => {
+                try {
+                    onProgress(70);
 
-                // Kích thước tối đa của ảnh sau khi xử lý
-                const MAX_WIDTH = 1600;
-                const MAX_HEIGHT = 1600;
+                    const MAX_WIDTH = 1600;
+                    const MAX_HEIGHT = 1600;
 
-                let width = img.width;
-                let height = img.height;
+                    const ratio = Math.min(
+                        MAX_WIDTH / img.width,
+                        MAX_HEIGHT / img.height,
+                        1
+                    );
 
-                // Thu nhỏ nhưng giữ nguyên tỷ lệ
-                const ratio = Math.min(
-                    MAX_WIDTH / width,
-                    MAX_HEIGHT / height,
-                    1
-                );
+                    const width = Math.max(
+                        1, Math.round(img.width * ratio)
+                    );
 
-                width = Math.round(width * ratio);
-                height = Math.round(height * ratio);
+                    const height = Math.max(
+                        1, Math.round(img.height * ratio)
+                    );
 
-                const canvas = document.createElement("canvas");
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
 
-                canvas.width = width;
-                canvas.height = height;
+                    const ctx = canvas.getContext("2d");
 
-                const ctx = canvas.getContext("2d");
+                    if (!ctx) {
+                        throw new Error("Không thể tạo canvas");
+                    }
 
-                // Nền trắng để xử lý ảnh PNG có trong suốt
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(
-                    0,
-                    0,
-                    width,
-                    height
-                );
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
 
-                ctx.drawImage(
-                    img,
-                    0,
-                    0,
-                    width,
-                    height
-                );
+                    onProgress(85);
 
-                // Chuyển thành WebP để giảm dung lượng
-                const optimized = canvas.toDataURL(
-                    "image/webp",
-                    0.82
-                );
+                    const optimized = canvas.toDataURL(
+                        "image/webp", 0.82
+                    );
 
-                resolve(optimized);
+                    if (
+                        !optimized.startsWith("data:image/") ||
+                        optimized.length < 100
+                    ) {
+                        throw new Error("Ảnh tối ưu không hợp lệ");
+                    }
+
+                    onProgress(100);
+                    resolve(optimized);
+
+                } catch (error) {
+                    reject(error);
+                }
             };
 
             img.src = reader.result;
@@ -2779,6 +2953,7 @@ function optimizeImage(file) {
         reader.readAsDataURL(file);
     });
 }
+
 
 
 /* =========================================================
@@ -2790,17 +2965,13 @@ $("image").onchange = async (event) => {
     const files = Array.from(event.target.files);
     event.target.value = "";
 
-    if (!files.length) return;
+    if (!files.length || imageProcessingCount > 0) return;
 
-    if (imageProcessingCount > 0) {
-        await modalAlert(
-            "Hệ thống đang xử lý ảnh. Vui lòng chờ hoàn tất.",
-            "warning"
-        );
-        return;
-    }
-
-    if (imagesData.length + files.length > 5) {
+    if (
+        imagesData.length +
+        pendingImages.length +
+        files.length > 5
+    ) {
         await modalAlert(
             "Mỗi sản phẩm chỉ được tối đa 5 ảnh.",
             "warning"
@@ -2834,51 +3005,71 @@ $("image").onchange = async (event) => {
         }
     }
 
+    const batch = files.map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        progress: 0,
+        status: "processing",
+        result: null
+    }));
+
+    pendingImages.push(...batch);
     imageProcessingCount++;
-    $("submitBtn").disabled = true;
-    $("submitBtn").textContent = "Đang xử lý ảnh...";
+
+    renderImagePreviews();
+    updateImageSubmitState();
 
     try {
-        const newImages = [];
-
-        for (const file of files) {
-            const optimized = await optimizeImage(file);
-
-            if (
-                typeof optimized !== "string" ||
-                !optimized.startsWith("data:image/") ||
-                optimized.length < 100
-            ) {
-                throw new Error(
-                    `Không thể tối ưu ảnh "${file.name}".`
+        for (const entry of batch) {
+            try {
+                const result = await optimizeImage(
+                    entry.file,
+                    percent => {
+                        entry.progress = percent;
+                        renderImagePreviews();
+                        updateImageSubmitState();
+                    }
                 );
+
+                entry.result = result;
+                entry.progress = 100;
+                entry.status = "ready";
+
+            } catch (error) {
+                console.error(
+                    "Lỗi xử lý ảnh:",
+                    entry.file.name,
+                    error
+                );
+
+                entry.status = "error";
+                entry.progress = 0;
             }
 
-            newImages.push(optimized);
+            renderImagePreviews();
+            updateImageSubmitState();
         }
 
-        imagesData.push(...newImages);
-        renderImagePreviews();
+        // Chuyển ảnh thành công sang danh sách chính
+        for (const entry of batch) {
+            if (entry.status === "ready") {
+                imagesData.push(entry.result);
+                URL.revokeObjectURL(entry.preview);
+            }
+        }
 
-    } catch (error) {
-        console.error("Lỗi xử lý ảnh:", error);
-
-        await modalAlert(
-            error.message || "Không thể xử lý hình ảnh.",
-            "error"
+        // Giữ lại ảnh lỗi để chủ shop nhìn thấy và xóa
+        pendingImages = pendingImages.filter(
+            entry => entry.status === "error"
         );
 
     } finally {
         imageProcessingCount--;
-
-        if (!uploadInProgress) {
-            $("submitBtn").disabled = false;
-            $("submitBtn").textContent = editing
-                ? "Cập nhật sản phẩm"
-                : "Đăng sản phẩm";
-        }
+        renderImagePreviews();
+        updateImageSubmitState();
     }
 };
+
 
         /* =========================================
            19. YÊU CẦU MẬT KHẨU ADMIN
@@ -3032,7 +3223,8 @@ function editProduct(product) {
     // Cập nhật tiêu đề và nút lưu
     $("formTitle").textContent = "Chỉnh sửa sản phẩm";
     $("submitBtn").textContent = "Lưu thay đổi";
-
+    
+updateImageSubmitState();
 openProductModal();
 }
 
