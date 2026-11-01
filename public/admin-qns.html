@@ -2628,25 +2628,68 @@ function modalPrompt(message) {
            15. GỌI API MÁY CHỦ
         ========================================== */
 
-        async function api(url, options = {}) {
-            const response = await fetch(url, {
-                ...options,
 
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-admin-password": password,
-                    ...options.headers
-                }
-            });
+async function api(url, options = {}) {
+    async function sendRequest() {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                "Content-Type": "application/json",
+                "x-admin-password": password,
+                ...options.headers
+            }
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.error || "Lỗi máy chủ");
+        if (!response.ok) {
+            const error = new Error(data.error || "Lỗi máy chủ");
+            error.status = response.status;
+            throw error;
+        }
+
+        return data;
+    }
+
+    // Chưa có mật khẩu thì yêu cầu nhập trước khi tải.
+    if (!password) {
+        const ok = await requireAdminPassword();
+        if (!ok) {
+            throw new Error("Bạn chưa nhập mật khẩu Admin.");
+        }
+    }
+
+    try {
+        return await sendRequest();
+    } catch (error) {
+        if (error.status !== 401) {
+            throw error;
+        }
+
+        // Mật khẩu cũ không hợp lệ.
+        sessionStorage.removeItem("shop3d_admin_password");
+        password = "";
+
+        const ok = await requireAdminPassword();
+
+        if (!ok) {
+            throw new Error("Bạn chưa xác thực Admin.");
+        }
+
+        // Thử lại một lần bằng mật khẩu vừa nhập.
+        try {
+            return await sendRequest();
+        } catch (retryError) {
+            if (retryError.status === 401) {
+                sessionStorage.removeItem("shop3d_admin_password");
+                password = "";
             }
 
-            return data;
+            throw retryError;
         }
+    }
+}
+
 
         /* =========================================
            16. TẢI DANH SÁCH SẢN PHẨM
