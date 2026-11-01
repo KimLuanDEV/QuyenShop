@@ -318,6 +318,171 @@ const format = (r) => ({
         : r.image ? [r.image] : []
 });
 
+
+
+
+/* ==========================================
+   PHÂN TRANG KHÁCH HÀNG - 6 SẢN PHẨM
+========================================== */
+
+app.get("/api/products-page", async (req, res) => {
+    try {
+        const page = Math.max(
+            1,
+            Math.min(100000, parseInt(req.query.page, 10) || 1)
+        );
+
+        const limit = 6;
+        const offset = (page - 1) * limit;
+        const category = String(req.query.category || "Tất cả");
+        const search = String(req.query.search || "")
+            .trim()
+            .slice(0, 120);
+
+        const conditions = [];
+        const params = [];
+
+        if (category !== "Tất cả") {
+            params.push(category);
+            conditions.push(`category = $${params.length}`);
+        }
+
+        if (search) {
+            params.push("%" + search + "%");
+            conditions.push(`name ILIKE $${params.length}`);
+        }
+
+        const where = conditions.length
+            ? "WHERE " + conditions.join(" AND ")
+            : "";
+
+        const countResult = await db.query(
+            `SELECT COUNT(*)::int AS total
+             FROM products ${where}`,
+            params
+        );
+
+        const total = countResult.rows[0].total;
+
+        // Chỉ đọc ảnh chính, KHÔNG đọc cả 5 ảnh.
+        const result = await db.query(
+            `SELECT id, name, price, category, stock,
+                    description, image
+             FROM products
+             ${where}
+             ORDER BY created_at DESC, id DESC
+             LIMIT $${params.length + 1}
+             OFFSET $${params.length + 2}`,
+            [...params, limit, offset]
+        );
+
+        res.json({
+            products: result.rows.map(row => ({
+                ...row,
+                price: Number(row.price),
+                images: row.image ? [row.image] : []
+            })),
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+        });
+
+    } catch (error) {
+        console.error("Lỗi phân trang:", error);
+        res.status(500).json({
+            error: "Không tải được trang sản phẩm"
+        });
+    }
+});
+
+
+/* DANH MỤC - KHÔNG TẢI ẢNH */
+
+app.get("/api/product-categories", async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT DISTINCT category
+            FROM products
+            WHERE category <> ''
+            ORDER BY category
+        `);
+
+        res.json([
+            "Tất cả",
+            ...result.rows.map(row => row.category)
+        ]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Không tải được danh mục"
+        });
+    }
+});
+
+
+/* CHI TIẾT - CHỈ TẢI 5 ẢNH KHI KHÁCH MỞ */
+
+app.get("/api/product-detail/:id", async (req, res) => {
+    try {
+        const result = await db.query(
+            `SELECT id, name, price, category, stock,
+                    description, image, images
+             FROM products WHERE id = $1`,
+            [req.params.id]
+        );
+
+        if (!result.rows.length) {
+            return res.status(404).json({
+                error: "Không tìm thấy sản phẩm"
+            });
+        }
+
+        res.json(format(result.rows[0]));
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Không tải được chi tiết sản phẩm"
+        });
+    }
+});
+
+
+/* GIỎ HÀNG - LẤY SẢN PHẨM THEO ID */
+
+app.post("/api/cart-products", async (req, res) => {
+    try {
+        const ids = Array.isArray(req.body?.ids)
+            ? [...new Set(
+                req.body.ids.map(String).filter(id => id.length <= 100)
+            )].slice(0, 50)
+            : [];
+
+        if (!ids.length) return res.json([]);
+
+        const result = await db.query(
+            `SELECT id, name, price, category, stock,
+                    description, image
+             FROM products
+             WHERE id = ANY($1::text[])`,
+            [ids]
+        );
+
+        res.json(result.rows.map(row => ({
+            ...row,
+            price: Number(row.price),
+            images: row.image ? [row.image] : []
+        })));
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Không tải được giỏ hàng"
+        });
+    }
+});
+
+
+
 app.get('/api/products',async(req,res)=>{try{const r=await db.query('SELECT * FROM products ORDER BY created_at DESC');res.json(r.rows.map(format))}catch(e){console.error(e);res.status(500).json({error:'Không tải được sản phẩm'})}});
 
 
