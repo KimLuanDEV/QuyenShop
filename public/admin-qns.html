@@ -2654,12 +2654,10 @@ function modalPrompt(message) {
 
 
 
-let productLoadInProgress = false;
+let productLoadRequestId = 0;
 
 async function load() {
-    if (productLoadInProgress) return;
-
-    productLoadInProgress = true;
+const requestId = ++productLoadRequestId;
 
     const loading = $("productLoading");
     const list = $("list");
@@ -2690,6 +2688,8 @@ async function load() {
 
         const data = await api(url);
 
+        if (requestId !== productLoadRequestId) return;
+
         if (!Array.isArray(data.products)) {
             throw new Error("Dữ liệu sản phẩm không hợp lệ.");
         }
@@ -2708,10 +2708,12 @@ async function load() {
         list.hidden = false;
         loading.hidden = true;
 
-    } catch (error) {
-        console.error("Lỗi tải sản phẩm:", error);
+} catch (error) {
+    if (requestId !== productLoadRequestId) return;
 
-        loading.classList.add("is-error");
+    console.error("Lỗi tải sản phẩm:", error);
+
+    loading.classList.add("is-error");
 
         $("productLoadingTitle").textContent =
             "Không thể tải danh sách sản phẩm";
@@ -2723,8 +2725,9 @@ async function load() {
         list.hidden = true;
         pagination.hidden = true;
 
-    } finally {
-        productLoadInProgress = false;
+    } 
+    finally {
+    // Yêu cầu mới nhất quyết định giao diện.
     }
 }
 
