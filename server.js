@@ -366,9 +366,12 @@ app.get("/api/products-page", async (req, res) => {
 
         // Chỉ đọc ảnh chính, KHÔNG đọc cả 5 ảnh.
         const result = await db.query(
-            `SELECT id, name, price, category, stock,
-                    description, image
-             FROM products
+
+            `SELECT
+    id, name, price, category, stock,
+    description, image
+FROM products
+
              ${where}
              ORDER BY created_at DESC, id DESC
              LIMIT $${params.length + 1}
@@ -486,6 +489,35 @@ app.post("/api/cart-products", async (req, res) => {
 app.get('/api/products',async(req,res)=>{try{const r=await db.query('SELECT * FROM products ORDER BY created_at DESC');res.json(r.rows.map(format))}catch(e){console.error(e);res.status(500).json({error:'Không tải được sản phẩm'})}});
 
 
+app.get("/api/admin/product-detail/:id", auth, async (req, res) => {
+    try {
+        const result = await db.query(
+            `SELECT *
+             FROM products
+             WHERE id = $1`,
+            [req.params.id]
+        );
+
+        if (!result.rows.length) {
+            return res.status(404).json({
+                error: "Không tìm thấy sản phẩm"
+            });
+        }
+
+        res.json({
+            product: format(result.rows[0])
+        });
+
+    } catch (error) {
+        console.error("Lỗi chi tiết sản phẩm:", error);
+
+        res.status(500).json({
+            error: "Không tải được chi tiết sản phẩm"
+        });
+    }
+});
+
+
 app.get("/api/admin/products-page", auth, async (req, res) => {
     try {
         const page = Math.max(
@@ -517,15 +549,15 @@ app.get("/api/admin/products-page", auth, async (req, res) => {
             WHERE name ILIKE $1 ESCAPE '\\'
         `, [searchPattern]);
 
-        const productsResult = await db.query(`
-            SELECT
-                id, name, price, category, stock,
-                description, image, images
-            FROM products
-            WHERE name ILIKE $1 ESCAPE '\\'
-            ORDER BY created_at DESC, id DESC
-            LIMIT $2 OFFSET $3
-        `, [searchPattern, limit, offset]);
+const productsResult = await db.query(`
+    SELECT
+        id, name, price, category, stock,
+        description, image
+    FROM products
+    WHERE name ILIKE $1 ESCAPE '\\'
+    ORDER BY created_at DESC, id DESC
+    LIMIT $2 OFFSET $3
+`, [searchPattern, limit, offset]);
 
         return res.json({
             products: productsResult.rows.map(format),

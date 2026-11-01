@@ -3273,7 +3273,22 @@ await load();
         ========================================== */
 
 
-function editProduct(product) {
+async function editProduct(product) {
+    try {
+        const detail = await api(
+            "/api/admin/product-detail/" +
+            encodeURIComponent(product.id)
+        );
+
+        product = detail.product || detail;
+
+    } catch (error) {
+        await modalAlert(
+            "Không tải được chi tiết sản phẩm: " + error.message,
+            "error"
+        );
+        return;
+    }
 
     editing = product.id;
 
