@@ -372,7 +372,7 @@ app.get("/api/products-page", async (req, res) => {
             Math.min(100000, parseInt(req.query.page, 10) || 1)
         );
 
-        const limit = 5;
+        const limit = 6;
         const offset = (page - 1) * limit;
         const category = String(req.query.category || "Tất cả");
         const search = String(req.query.search || "")
@@ -590,7 +590,7 @@ app.get("/api/admin/products-page", auth, async (req, res) => {
             Math.min(100000, parseInt(req.query.page, 10) || 1)
         );
 
-        const limit = 5;
+        const limit = 6;
         const offset = (page - 1) * limit;
 
         const search = String(req.query.search || "")
@@ -933,7 +933,7 @@ app.patch(
             res.json({
                 ok: true,
                 position: newIndex + 1,
-                page: Math.floor(newIndex / 5) + 1
+                page: Math.floor(newIndex / 6) + 1
             });
 
         } catch (error) {
