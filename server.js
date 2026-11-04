@@ -372,7 +372,7 @@ app.get("/api/products-page", async (req, res) => {
             Math.min(100000, parseInt(req.query.page, 10) || 1)
         );
 
-        const limit = 6;
+        const limit = 5;
         const offset = (page - 1) * limit;
         const category = String(req.query.category || "Tất cả");
         const search = String(req.query.search || "")
@@ -621,7 +621,7 @@ SELECT
 FROM products
     
     WHERE name ILIKE $1 ESCAPE '\\'
-    ORDER BY created_at DESC, id DESC
+    ORDER BY display_order ASC NULLS LAST, id ASC
     LIMIT $2 OFFSET $3
 `, [searchPattern, limit, offset]);
 
